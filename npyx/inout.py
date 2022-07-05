@@ -93,13 +93,14 @@ def metadata(dp):
     probe_versions = {
         'glx':{3.0:'3A', # option 3
                0.0:'1.0',
+               1030.0:'1030',
                21:'2.0_singleshank',
                24:'2.0_fourshanks'},
         'oe':{"Neuropix-3a":'3A', # source_processor_name keys
                 "Neuropix-PXI":'1.0',
                 '?1':'2.0_singleshank', # do not know yet
                 '?2':'2.0_fourshanks'}, # do not know yet
-        'int':{'3A':1, '1.0':1,
+        'int':{'3A':1, '1.0':1, '1030':1, 
                '2.0_singleshank':2, '2.0_fourshanks':2}
         }
 
@@ -111,6 +112,7 @@ def metadata(dp):
     # find meta file
     glx_ap_files = list_files(dp, "ap.meta", True)
     glx_lf_files = list_files(dp, "lf.meta", True)
+
     oe_files = list_files(dp, "oebin", True)
     glx_found = np.any(glx_ap_files) or np.any(glx_lf_files)
     oe_found = np.any(oe_files)
@@ -214,7 +216,7 @@ def metadata(dp):
         # Find the voltage range, gain, encoding
         # and deduce the conversion from units/bit to uV
         Vrange=(meta_glx["highpass"]['imAiRangeMax']-meta_glx["highpass"]['imAiRangeMin'])*1e6
-        if meta['probe_version'] in ['3A', '1.0']:
+        if meta['probe_version'] in ['3A', '1.0','1030']:
             if Vrange!=1.2e6: print(f'\u001b[31mHeads-up, the voltage range seems to be {Vrange}, which is not the default (1.2*10^6). Might be normal!')
             bits_encoding=10
             ampFactor=ale(meta_glx["highpass"]['~imroTbl'][1].split(' ')[3]) # typically 500
@@ -650,9 +652,9 @@ def assert_chan_in_dataset(dp, channels):
     channels = np.array(channels)
     cm=chan_map(dp, probe_version='local')
     if not np.all(np.isin(channels, cm[:,0])):
-        print(("WARNING Kilosort excluded some channels that you provided for analysis "
-               "because they did not display enough threshold crossings! Jumping channels:"
-               f"{channels[~np.isin(channels, cm[:,0])]}"))
+        print("WARNING Kilosort excluded some channels that you provided for analysis \
+    because they did not display enough threshold crossings! Jumping channels:{}\
+    ".format(channels[~np.isin(channels, cm[:,0])]))
     channels=channels[np.isin(channels, cm[:,0])]
     return channels
 
@@ -815,8 +817,7 @@ def preprocess_binary_file(dp=None, filt_key='ap', fname=None, target_dp=None, m
                 batch = cp.asarray(batch, dtype=np.float32)
 
             # CAR (optional) -> temporal filtering -> weight to combine edges -> unpadding
-            batch = gpufilter(batch, fs=fs, fshigh=f_high, fslow=f_low, order=order,
-                              car=median_subtract, bidirectional=False)
+            batch = gpufilter(batch, fs=fs, fshigh=f_high, fslow=f_low, order=order, car=median_subtract)
             assert batch.flags.c_contiguous # check that ordering is still C, not F
             batch[ntb:2*ntb] = w_edge * batch[ntb:2*ntb] + (1 - w_edge) * buff_prev
             buff_prev = batch[NT + ntb: NT + 2*ntb]

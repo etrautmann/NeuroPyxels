@@ -803,6 +803,7 @@ def plot_wvf(dp, u=None, Nchannels=8, chStart=None, n_waveforms=100, t_waveforms
     # Save figure
     if saveFig:
         save_mpl_fig(fig, title, saveDir, _format)
+        print(f"saving figure to: {saveDir}: {title}")
     if saveData:
         np.save(Path(saveDir, title+'.npy'), waveforms)
 
@@ -1004,7 +1005,7 @@ def plot_raw_units(dp, times, units=[], channels=np.arange(384), offset=450,
     #     peakChan=get_peak_chan(dp,units[0])
     #     channels=np.arange(peakChan-Nchan_plot//2-1, peakChan+Nchan_plot//2+2)
     channels=assert_chan_in_dataset(dp, channels)
-    rc = extract_rawChunk(dp, times, channels, 'ap', saveData,
+    rc = extract_rawChunk(dp, times, channels, 'highpass', saveData,
                           whiten, med_sub, hpfilt, hpfiltf, nRangeWhiten, nRangeMedSub, ignore_ks_chanfilt)
     # Offset data
     plt_offsets = np.arange(0, len(channels)*offset, offset)
